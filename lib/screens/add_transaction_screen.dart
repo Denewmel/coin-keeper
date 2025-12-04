@@ -1,7 +1,116 @@
 import 'package:flutter/material.dart';
+import '../models/transaction.dart';
 
-class AddTransactionScreen extends StatelessWidget {
-  const AddTransactionScreen({super.key});
+/// Тип для callback-функции сохранения транзакции
+typedef TransactionCallback = void Function(Transaction transaction);
+
+/// Экран для добавления новой транзакции (дохода или расхода)
+class AddTransactionScreen extends StatefulWidget {
+  final TransactionCallback onSave;
+  final bool initialIsIncome;
+
+  const AddTransactionScreen({
+    super.key, 
+    required this.onSave,
+    required this.initialIsIncome,
+  });
+
+  @override
+  State<AddTransactionScreen> createState() => _AddTransactionScreenState();
+}
+
+class _AddTransactionScreenState extends State<AddTransactionScreen> {
+  bool _isIncome = false;
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  String _selectedCategory = 'Еда';
+
+  // Список категорий для доходов
+  final List<String> _incomeCategories = [
+    'Зарплата',
+    'Фриланс',
+    'Инвестиции',
+    'Подарок',
+    'Возврат',
+    'Другое',
+  ];
+
+  // Список категорий для расходов
+  final List<String> _expenseCategories = [
+    'Еда',
+    'Транспорт',
+    'Развлечения',
+    'Покупки',
+    'Коммуналка',
+    'Другое',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _isIncome = widget.initialIsIncome;
+    _selectedCategory = _isIncome ? _incomeCategories[0] : _expenseCategories[0];
+  }
+
+  /// Проверяет и сохраняет новую транзакцию
+  void _saveTransaction() {
+    // Проверка обязательных полей
+    if (_amountController.text.isEmpty || _titleController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Заполните сумму и название'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final amount = double.tryParse(_amountController.text) ?? 0;
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Сумма должна быть больше 0'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Создание новой транзакции
+    final transaction = Transaction.create(
+      title: _titleController.text,
+      amount: amount,
+      category: _selectedCategory,
+      description: _descriptionController.text.isNotEmpty 
+          ? _descriptionController.text 
+          : null,
+      isIncome: _isIncome,
+    );
+
+    // Вызов callback для сохранения
+    widget.onSave(transaction);
+
+    // Уведомление об успешном добавлении
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _isIncome 
+              ? 'Доход добавлен: +${amount.toStringAsFixed(0)} ₽'
+              : 'Расход добавлен: -${amount.toStringAsFixed(0)} ₽',
+        ),
+        backgroundColor: _isIncome ? Colors.green : Colors.blue,
+      ),
+    );
+
+    // Возврат на предыдущий экран
+    Navigator.pop(context);
+  }
+
+  /// Возвращает текущий список категорий в зависимости от типа операции
+  List<String> get _currentCategories {
+    return _isIncome ? _incomeCategories : _expenseCategories;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,13 +119,17 @@ class AddTransactionScreen extends StatelessWidget {
         title: const Text('Добавить операцию'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Переключатель тип операции
+            // Переключатель типа операции (Доход/Расход)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -26,16 +139,38 @@ class AddTransactionScreen extends StatelessWidget {
                     Expanded(
                       child: ChoiceChip(
                         label: const Text('ДОХОД'),
-                        selected: false,
-                        onSelected: (selected) {},
+                        selected: _isIncome,
+                        onSelected: (selected) {
+                          setState(() {
+                            _isIncome = true;
+                            _selectedCategory = _currentCategories[0];
+                          });
+                        },
+                        selectedColor: Colors.green,
+                        backgroundColor: Colors.grey[200],
+                        labelStyle: TextStyle(
+                          color: _isIncome ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: ChoiceChip(
                         label: const Text('РАСХОД'),
-                        selected: true,
-                        onSelected: (selected) {},
+                        selected: !_isIncome,
+                        onSelected: (selected) {
+                          setState(() {
+                            _isIncome = false;
+                            _selectedCategory = _currentCategories[0];
+                          });
+                        },
+                        selectedColor: Colors.red,
+                        backgroundColor: Colors.grey[200],
+                        labelStyle: TextStyle(
+                          color: !_isIncome ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -45,13 +180,31 @@ class AddTransactionScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
+            // Поле для названия операции
+            TextFormField(
+              controller: _titleController,
+              decoration: InputDecoration(
+                labelText: _isIncome ? 'Источник дохода' : 'На что потратили',
+                prefixIcon: const Icon(Icons.title),
+                border: const OutlineInputBorder(),
+                hintText: _isIncome ? 'Зарплата, подарок...' : 'Продукты, кафе...',
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             // Поле для суммы
             TextFormField(
-              decoration: const InputDecoration(
+              controller: _amountController,
+              decoration: InputDecoration(
                 labelText: 'Сумма',
-                prefixIcon: Icon(Icons.currency_ruble),
-                border: OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.currency_ruble),
+                border: const OutlineInputBorder(),
                 hintText: '0',
+                filled: true,
+                fillColor: Colors.grey[50],
               ),
               keyboardType: TextInputType.number,
             ),
@@ -60,49 +213,39 @@ class AddTransactionScreen extends StatelessWidget {
 
             // Выбор категории
             DropdownButtonFormField(
-              decoration: const InputDecoration(
+              value: _selectedCategory,
+              decoration: InputDecoration(
                 labelText: 'Категория',
-                prefixIcon: Icon(Icons.category),
-                border: OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.category),
+                border: const OutlineInputBorder(),
+                filled: true,
+                fillColor: Colors.grey[50],
               ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'food',
-                  child: Text('Еда'),
-                ),
-                DropdownMenuItem(
-                  value: 'transport',
-                  child: Text('Транспорт'),
-                ),
-                DropdownMenuItem(
-                  value: 'entertainment',
-                  child: Text('Развлечения'),
-                ),
-                DropdownMenuItem(
-                  value: 'shopping',
-                  child: Text('Покупки'),
-                ),
-                DropdownMenuItem(
-                  value: 'salary',
-                  child: Text('Зарплата'),
-                ),
-                DropdownMenuItem(
-                  value: 'other',
-                  child: Text('Другое'),
-                ),
-              ],
-              onChanged: (value) {},
+              items: _currentCategories.map((category) {
+                return DropdownMenuItem(
+                  value: category,
+                  child: Text(category),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategory = value!;
+                });
+              },
             ),
 
             const SizedBox(height: 16),
 
-            // Поле для описания
+            // Поле для описания (необязательное)
             TextFormField(
-              decoration: const InputDecoration(
+              controller: _descriptionController,
+              decoration: InputDecoration(
                 labelText: 'Описание (необязательно)',
-                prefixIcon: Icon(Icons.description),
-                border: OutlineInputBorder(),
-                hintText: 'Завтрак, кофе, магазин...',
+                prefixIcon: const Icon(Icons.description),
+                border: const OutlineInputBorder(),
+                hintText: 'Дополнительные детали...',
+                filled: true,
+                fillColor: Colors.grey[50],
               ),
               maxLines: 2,
             ),
@@ -111,14 +254,17 @@ class AddTransactionScreen extends StatelessWidget {
 
             // Кнопка сохранения
             ElevatedButton(
-              onPressed: null, // Пока без логики
+              onPressed: _saveTransaction,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.blue,
+                backgroundColor: _isIncome ? Colors.green : Colors.blue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text(
-                'СОХРАНИТЬ',
-                style: TextStyle(
+              child: Text(
+                _isIncome ? 'СОХРАНИТЬ ДОХОД' : 'СОХРАНИТЬ РАСХОД',
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -128,22 +274,38 @@ class AddTransactionScreen extends StatelessWidget {
 
             const Spacer(),
 
-            // Подсказка
+            // Подсказка о влиянии операции на баланс
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: _isIncome 
+                    ? Colors.green.withOpacity(0.1) 
+                    : Colors.blue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(
+                  color: _isIncome 
+                      ? Colors.green.withOpacity(0.3) 
+                      : Colors.blue.withOpacity(0.3),
+                ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 20, color: Colors.blue),
-                  SizedBox(width: 8),
+                  Icon(
+                    _isIncome ? Icons.arrow_upward : Icons.arrow_downward,
+                    size: 20,
+                    color: _isIncome ? Colors.green : Colors.blue,
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Операция будет добавлена в историю транзакций и учтена в балансе',
-                      style: TextStyle(fontSize: 12),
+                      _isIncome
+                          ? 'Доход увеличит ваш баланс'
+                          : 'Расход уменьшит ваш баланс',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _isIncome ? Colors.green : Colors.blue,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
