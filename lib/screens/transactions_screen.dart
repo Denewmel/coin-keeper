@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 
-/// Экран для отображения всех транзакций с возможностью фильтрации
+/// Экран для отображения всех транзакций с возможностью удаления
 class TransactionsScreen extends StatefulWidget {
-  final List<Transaction> transactions;
+  final List<Transaction> initialTransactions;
+  final Function(String) onDeleteTransaction;
   
   const TransactionsScreen({
     super.key,
-    required this.transactions,
+    required this.initialTransactions,
+    required this.onDeleteTransaction,
   });
 
   @override
@@ -15,19 +17,70 @@ class TransactionsScreen extends StatefulWidget {
 }
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
-  // Фильтр для отображения транзакций: all, income, expense
   String _filter = 'all';
+  List<Transaction> _transactions = [];
+  
+  @override
+  void initState() {
+    super.initState();
+    _transactions = widget.initialTransactions;
+  }
 
-  /// Возвращает отфильтрованный список транзакций в зависимости от выбранного фильтра
   List<Transaction> get _filteredTransactions {
     switch (_filter) {
       case 'income':
-        return widget.transactions.where((t) => t.isIncome).toList();
+        return _transactions.where((t) => t.isIncome).toList();
       case 'expense':
-        return widget.transactions.where((t) => !t.isIncome).toList();
+        return _transactions.where((t) => !t.isIncome).toList();
       default:
-        return widget.transactions;
+        return _transactions;
     }
+  }
+
+  /// Удаляет транзакцию с подтверждением
+  void _deleteTransaction(String id, String title) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удалить операцию'),
+        content: Text('Вы уверены, что хотите удалить операцию "$title"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // Закрыть диалог
+              
+              // Удаляем из списка СРАЗУ
+              setState(() {
+                _transactions.removeWhere((t) => t.id == id);
+              });
+              
+              // Вызываем callback для удаления из хранилища
+              await widget.onDeleteTransaction(id);
+              
+              // Показать уведомление об успешном удалении
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Операция удалена'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -40,7 +93,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       ),
       body: Column(
         children: [
-          // Панель фильтров: Все/Доходы/Расходы
+          // Панель фильтров
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
@@ -77,7 +130,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             ),
           ),
 
-          // Информация о количестве отфильтрованных транзакций
+          // Информация о количестве
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
@@ -85,7 +138,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 const Icon(Icons.info_outline, size: 16),
                 const SizedBox(width: 8),
                 Text(
-                  'Показано: ${_filteredTransactions.length} из ${widget.transactions.length}',
+                  'Показано: ${_filteredTransactions.length} из ${_transactions.length}',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
@@ -94,7 +147,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
           const SizedBox(height: 8),
 
-          // Список транзакций
+          // Список транзакций с кнопкой удаления
           Expanded(
             child: _filteredTransactions.isEmpty
                 ? const Center(
@@ -127,135 +180,167 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
-  /// Строит карточку для отображения транзакции с полной информацией
+  /// Строит карточку транзакции с кнопкой удаления
   Widget _buildTransactionCard(Transaction transaction) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: transaction.isIncome 
+                ? Colors.green.shade100 
+                : Colors.red.shade100,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            transaction.isIncome 
+                ? Icons.arrow_upward 
+                : Icons.arrow_downward,
+            color: transaction.isIncome ? Colors.green : Colors.red,
+          ),
+        ),
+        title: Text(
+          transaction.title,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Заголовок карточки: иконка, название, категория и сумма
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      // Иконка типа операции (доход/расход)
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: transaction.isIncome 
-                              ? Colors.green.shade100 
-                              : Colors.red.shade100,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          transaction.isIncome 
-                              ? Icons.arrow_upward 
-                              : Icons.arrow_downward,
-                          size: 20,
-                          color: transaction.isIncome ? Colors.green : Colors.red,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Название транзакции
-                            Text(
-                              transaction.title,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            // Категория транзакции
-                            Text(
-                              transaction.category,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Сумма транзакции (зеленый для доходов, красный для расходов)
-                Text(
-                  '${transaction.isIncome ? '+' : '-'}${transaction.amount.toStringAsFixed(0)} ₽',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: transaction.isIncome ? Colors.green : Colors.red,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            // Строка с датой и временем операции
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  '${transaction.date.day}.${transaction.date.month}.${transaction.date.year} '
-                  '${transaction.date.hour.toString().padLeft(2, '0')}:${transaction.date.minute.toString().padLeft(2, '0')}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-
-            // Блок с описанием (отображается только если описание есть)
-            if (transaction.description != null && transaction.description!.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  const Divider(height: 1),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Описание:',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    transaction.description!,
-                    style: const TextStyle(fontSize: 14),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-
-            // Отладочная информация: последние 6 символов ID транзакции
-            if (transaction.description == null || transaction.description!.isEmpty)
-              const SizedBox(height: 4),
             Text(
-              'ID: ${transaction.id.substring(transaction.id.length - 6)}',
-              style: const TextStyle(
-                fontSize: 10,
-                color: Colors.grey,
-                fontStyle: FontStyle.italic,
-              ),
+              '${transaction.date.day}.${transaction.date.month}.${transaction.date.year}',
+              style: const TextStyle(fontSize: 12),
+            ),
+            Text(
+              transaction.category,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
         ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${transaction.isIncome ? '+' : '-'}${transaction.amount.toStringAsFixed(0)} ₽',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: transaction.isIncome ? Colors.green : Colors.red,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(
+                Icons.delete,
+                size: 20,
+                color: Colors.red.shade400,
+              ),
+              onPressed: () => _deleteTransaction(transaction.id, transaction.title),
+              tooltip: 'Удалить операцию',
+              padding: const EdgeInsets.all(4),
+            ),
+          ],
+        ),
+        onTap: () {
+          // Показываем детали транзакции
+          _showTransactionDetails(transaction);
+        },
+      ),
+    );
+  }
+
+  /// Показывает детали транзакции
+  void _showTransactionDetails(Transaction transaction) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Детали операции'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: transaction.isIncome 
+                        ? Colors.green.shade100 
+                        : Colors.red.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    transaction.isIncome 
+                        ? Icons.arrow_upward 
+                        : Icons.arrow_downward,
+                    size: 30,
+                    color: transaction.isIncome ? Colors.green : Colors.red,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              _buildDetailRow('Название:', transaction.title),
+              _buildDetailRow('Тип:', transaction.isIncome ? 'Доход' : 'Расход'),
+              _buildDetailRow('Сумма:', '${transaction.amount.toStringAsFixed(0)} ₽'),
+              _buildDetailRow('Категория:', transaction.category),
+              _buildDetailRow(
+                'Дата:', 
+                '${transaction.date.day}.${transaction.date.month}.${transaction.date.year} '
+                '${transaction.date.hour.toString().padLeft(2, '0')}:${transaction.date.minute.toString().padLeft(2, '0')}'
+              ),
+              
+              if (transaction.description != null && transaction.description!.isNotEmpty)
+                _buildDetailRow('Описание:', transaction.description!),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Закрыть детали
+              _deleteTransaction(transaction.id, transaction.title); // Удалить
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Вспомогательный метод для отображения строки деталей
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
       ),
     );
   }

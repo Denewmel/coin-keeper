@@ -137,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SnackBar(
             content: Text('Используются базовые курсы валют'),
             backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
+            duration: Duration(seconds: 3),
           ),
         );
       }
@@ -243,6 +243,31 @@ class _HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Ошибка сохранения транзакции'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Удаляет транзакцию по ID
+  Future<void> _deleteTransaction(String id) async {
+    try {
+      await _repository.removeTransaction(id);
+      // Обновляем список транзакций
+      if (mounted) {
+        setState(() {
+          _transactions = _repository.getTransactions();
+        });
+      }
+      
+      print('Транзакция удалена: $id');
+    } catch (e) {
+      print('Ошибка удаления транзакции: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ошибка удаления транзакции'),
             backgroundColor: Colors.red,
           ),
         );
@@ -882,10 +907,18 @@ class _HomeScreenState extends State<HomeScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => TransactionsScreen(
-                                transactions: _transactions,
+                                initialTransactions: _transactions,
+                                onDeleteTransaction: _deleteTransaction,
                               ),
                             ),
-                          );
+                          ).then((_) {
+                            // После возврата с экрана транзакций обновляем состояние
+                            if (mounted) {
+                              setState(() {
+                                _transactions = _repository.getTransactions();
+                              });
+                            }
+                          });
                         },
                         icon: const Icon(Icons.list_alt),
                         label: const Text('ВСЕ ТРАНЗАКЦИИ'),
