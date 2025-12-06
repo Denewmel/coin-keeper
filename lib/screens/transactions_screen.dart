@@ -222,7 +222,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${transaction.isIncome ? '+' : '-'}${transaction.amount.toStringAsFixed(0)} ₽',
+              '${transaction.isIncome ? '+' : '-'}${transaction.amount.toStringAsFixed(2)} ₽',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -284,7 +284,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               
               _buildDetailRow('Название:', transaction.title),
               _buildDetailRow('Тип:', transaction.isIncome ? 'Доход' : 'Расход'),
-              _buildDetailRow('Сумма:', '${transaction.amount.toStringAsFixed(0)} ₽'),
+              _buildDetailRow('Сумма:', '${transaction.amount.toStringAsFixed(2)} ₽'),
               _buildDetailRow('Категория:', transaction.category),
               _buildDetailRow(
                 'Дата:', 

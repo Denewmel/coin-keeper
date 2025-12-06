@@ -136,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Text('Текущий баланс', style: TextStyle(fontSize: 14, color: Colors.grey)),
               const SizedBox(height: 8),
-              Text('${balance.toStringAsFixed(0)} ₽',
+              Text('${balance.toStringAsFixed(2)} ₽',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: balance >= 0 ? Colors.green.shade700 : Colors.red.shade700,
@@ -221,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
           style: const TextStyle(fontSize: 12),
         ),
         trailing: Text(
-          '${transaction.isIncome ? '+' : '-'}${transaction.amount.toStringAsFixed(0)} ₽',
+          '${transaction.isIncome ? '+' : '-'}${transaction.amount.toStringAsFixed(2)} ₽',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,

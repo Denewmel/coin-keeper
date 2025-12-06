@@ -24,7 +24,7 @@ class _AdjustBalanceDialogState extends State<AdjustBalanceDialog> {
   void initState() {
     super.initState();
     // Устанавливаем текущий баланс в поле ввода по умолчанию
-    _amountController.text = widget.currentBalance.toStringAsFixed(0);
+    _amountController.text = widget.currentBalance.toStringAsFixed(2);
   }
 
   @override
@@ -36,7 +36,7 @@ class _AdjustBalanceDialogState extends State<AdjustBalanceDialog> {
         children: [
           const Text('Текущий баланс:'),
           Text(
-            '${widget.currentBalance.toStringAsFixed(0)} ₽',
+            '${widget.currentBalance.toStringAsFixed(2)} ₽',
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,

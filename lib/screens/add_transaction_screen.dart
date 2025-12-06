@@ -96,8 +96,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       SnackBar(
         content: Text(
           _isIncome 
-              ? 'Доход добавлен: +${amount.toStringAsFixed(0)} ₽'
-              : 'Расход добавлен: -${amount.toStringAsFixed(0)} ₽',
+              ? 'Доход добавлен: +${amount.toStringAsFixed(2)} ₽'
+              : 'Расход добавлен: -${amount.toStringAsFixed(2)} ₽',
         ),
         backgroundColor: _isIncome ? Colors.green : Colors.blue,
       ),
@@ -213,7 +213,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
             // Выбор категории
             DropdownButtonFormField(
-              value: _selectedCategory,
+              initialValue: _selectedCategory,
               decoration: InputDecoration(
                 labelText: 'Категория',
                 prefixIcon: const Icon(Icons.category),
