@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 
-/// Экран для отображения всех транзакций с возможностью удаления
 class TransactionsScreen extends StatefulWidget {
   final List<Transaction> initialTransactions;
   final Function(String) onDeleteTransaction;
@@ -37,7 +36,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  /// Удаляет транзакцию с подтверждением
   void _deleteTransaction(String id, String title) {
     showDialog(
       context: context,
@@ -51,17 +49,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context); // Закрыть диалог
+              Navigator.pop(context);
               
-              // Удаляем из списка СРАЗУ
               setState(() {
                 _transactions.removeWhere((t) => t.id == id);
               });
               
-              // Вызываем callback для удаления из хранилища
               await widget.onDeleteTransaction(id);
               
-              // Показать уведомление об успешном удалении
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -93,7 +88,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       ),
       body: Column(
         children: [
-          // Панель фильтров
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
@@ -130,7 +124,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             ),
           ),
 
-          // Информация о количестве
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
@@ -147,7 +140,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
           const SizedBox(height: 8),
 
-          // Список транзакций с кнопкой удаления
           Expanded(
             child: _filteredTransactions.isEmpty
                 ? const Center(
@@ -180,7 +172,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
-  /// Строит карточку транзакции с кнопкой удаления
   Widget _buildTransactionCard(Transaction transaction) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -209,7 +200,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${transaction.date.day}.${transaction.date.month}.${transaction.date.year}',
+              transaction.formattedDateTime,
               style: const TextStyle(fontSize: 12),
             ),
             Text(
@@ -243,14 +234,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           ],
         ),
         onTap: () {
-          // Показываем детали транзакции
           _showTransactionDetails(transaction);
         },
       ),
     );
   }
 
-  /// Показывает детали транзакции
   void _showTransactionDetails(Transaction transaction) {
     showDialog(
       context: context,
@@ -286,11 +275,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               _buildDetailRow('Тип:', transaction.isIncome ? 'Доход' : 'Расход'),
               _buildDetailRow('Сумма:', '${transaction.amount.toStringAsFixed(2)} ₽'),
               _buildDetailRow('Категория:', transaction.category),
-              _buildDetailRow(
-                'Дата:', 
-                '${transaction.date.day}.${transaction.date.month}.${transaction.date.year} '
-                '${transaction.date.hour.toString().padLeft(2, '0')}:${transaction.date.minute.toString().padLeft(2, '0')}'
-              ),
+              _buildDetailRow('Дата:', transaction.formattedDate),
+              _buildDetailRow('Время:', transaction.formattedTime),
               
               if (transaction.description != null && transaction.description!.isNotEmpty)
                 _buildDetailRow('Описание:', transaction.description!),
@@ -304,8 +290,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Закрыть детали
-              _deleteTransaction(transaction.id, transaction.title); // Удалить
+              Navigator.pop(context);
+              _deleteTransaction(transaction.id, transaction.title);
             },
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
@@ -317,7 +303,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
-  /// Вспомогательный метод для отображения строки деталей
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

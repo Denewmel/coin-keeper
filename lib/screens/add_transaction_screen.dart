@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/transaction.dart';
+import '../viewmodels/home_viewmodel.dart';
+import '../models/category.dart';
 
-/// Тип для callback-функции сохранения транзакции
 typedef TransactionCallback = void Function(Transaction transaction);
 
-/// Экран для добавления новой транзакции (дохода или расхода)
 class AddTransactionScreen extends StatefulWidget {
   final TransactionCallback onSave;
   final bool initialIsIncome;
@@ -24,38 +25,32 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  String _selectedCategory = 'Еда';
-
-  // Список категорий для доходов
-  final List<String> _incomeCategories = [
-    'Зарплата',
-    'Фриланс',
-    'Инвестиции',
-    'Подарок',
-    'Возврат',
-    'Другое',
-  ];
-
-  // Список категорий для расходов
-  final List<String> _expenseCategories = [
-    'Еда',
-    'Транспорт',
-    'Развлечения',
-    'Покупки',
-    'Коммуналка',
-    'Другое',
-  ];
+  String? _selectedCategory;
 
   @override
   void initState() {
     super.initState();
     _isIncome = widget.initialIsIncome;
-    _selectedCategory = _isIncome ? _incomeCategories[0] : _expenseCategories[0];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateSelectedCategory();
+    });
   }
 
-  /// Проверяет и сохраняет новую транзакцию
+  void _updateSelectedCategory() {
+    final categories = _currentCategories;
+    if (categories.isNotEmpty) {
+      setState(() {
+        _selectedCategory = categories[0].name;
+      });
+    }
+  }
+
+  List<Category> get _currentCategories {
+    final viewModel = context.read<HomeViewModel>();
+    return viewModel.categoryRepository.getCategories(isIncome: _isIncome);
+  }
+
   void _saveTransaction() {
-    // Проверка обязательных полей
     if (_amountController.text.isEmpty || _titleController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -77,21 +72,28 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       return;
     }
 
-    // Создание новой транзакции
+    if (_selectedCategory == null || _selectedCategory!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Выберите категорию'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final transaction = Transaction.create(
       title: _titleController.text,
       amount: amount,
-      category: _selectedCategory,
+      category: _selectedCategory!,
       description: _descriptionController.text.isNotEmpty 
           ? _descriptionController.text 
           : null,
       isIncome: _isIncome,
     );
 
-    // Вызов callback для сохранения
     widget.onSave(transaction);
 
-    // Уведомление об успешном добавлении
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -103,17 +105,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       ),
     );
 
-    // Возврат на предыдущий экран
     Navigator.pop(context);
-  }
-
-  /// Возвращает текущий список категорий в зависимости от типа операции
-  List<String> get _currentCategories {
-    return _isIncome ? _incomeCategories : _expenseCategories;
   }
 
   @override
   Widget build(BuildContext context) {
+    final categories = _currentCategories;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Добавить операцию'),
@@ -129,7 +127,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Переключатель типа операции (Доход/Расход)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -143,7 +140,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         onSelected: (selected) {
                           setState(() {
                             _isIncome = true;
-                            _selectedCategory = _currentCategories[0];
+                            _updateSelectedCategory();
                           });
                         },
                         selectedColor: Colors.green,
@@ -162,7 +159,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         onSelected: (selected) {
                           setState(() {
                             _isIncome = false;
-                            _selectedCategory = _currentCategories[0];
+                            _updateSelectedCategory();
                           });
                         },
                         selectedColor: Colors.red,
@@ -180,7 +177,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
             const SizedBox(height: 24),
 
-            // Поле для названия операции
             TextFormField(
               controller: _titleController,
               decoration: InputDecoration(
@@ -195,7 +191,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
             const SizedBox(height: 16),
 
-            // Поле для суммы
             TextFormField(
               controller: _amountController,
               decoration: InputDecoration(
@@ -211,9 +206,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
             const SizedBox(height: 16),
 
-            // Выбор категории
-            DropdownButtonFormField(
-              initialValue: _selectedCategory,
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
               decoration: InputDecoration(
                 labelText: 'Категория',
                 prefixIcon: const Icon(Icons.category),
@@ -221,10 +215,20 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
-              items: _currentCategories.map((category) {
+              items: categories.map((category) {
                 return DropdownMenuItem(
-                  value: category,
-                  child: Text(category),
+                  value: category.name,
+                  child: Row(
+                    children: [
+                      Icon(
+                        category.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
+                        size: 16,
+                        color: category.isIncome ? Colors.green : Colors.red,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(category.name),
+                    ],
+                  ),
                 );
               }).toList(),
               onChanged: (value) {
@@ -236,7 +240,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
             const SizedBox(height: 16),
 
-            // Поле для описания (необязательное)
             TextFormField(
               controller: _descriptionController,
               decoration: InputDecoration(
@@ -252,7 +255,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
             const SizedBox(height: 32),
 
-            // Кнопка сохранения
             ElevatedButton(
               onPressed: _saveTransaction,
               style: ElevatedButton.styleFrom(
@@ -274,7 +276,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
             const Spacer(),
 
-            // Подсказка о влиянии операции на баланс
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(

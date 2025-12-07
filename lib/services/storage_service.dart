@@ -1,13 +1,12 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-/// Сервис для работы с локальным хранилищем (SharedPreferences)
 class StorageService {
   static const String _transactionsKey = 'transactions';
   static const String _currencyRatesKey = 'currency_rates';
   static const String _currencyLastUpdateKey = 'currency_last_update';
+  static const String _categoriesKey = 'categories';
 
-  /// Сохраняет список транзакций в локальное хранилище
   static Future<void> saveTransactions(List<Map<String, dynamic>> transactions) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -19,7 +18,6 @@ class StorageService {
     }
   }
 
-  /// Загружает список транзакций из локального хранилища
   static Future<List<Map<String, dynamic>>> loadTransactions() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -40,7 +38,6 @@ class StorageService {
     }
   }
 
-  /// Сохраняет курсы валют в локальное хранилище
   static Future<void> saveCurrencyRates(Map<String, double> rates) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -53,7 +50,6 @@ class StorageService {
     }
   }
 
-  /// Загружает курсы валют из локального хранилища
   static Future<Map<String, dynamic>> loadCurrencySettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -86,7 +82,37 @@ class StorageService {
     }
   }
 
-  /// Очищает все сохраненные данные (для тестирования)
+  static Future<void> saveCategories(List<Map<String, dynamic>> categories) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = json.encode(categories);
+      await prefs.setString(_categoriesKey, jsonString);
+      print('Категории сохранены: ${categories.length} записей');
+    } catch (e) {
+      print('Ошибка сохранения категорий: $e');
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> loadCategories() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_categoriesKey);
+      
+      if (jsonString == null || jsonString.isEmpty) {
+        print('Нет сохраненных категорий');
+        return [];
+      }
+      
+      final List<dynamic> jsonList = json.decode(jsonString) as List<dynamic>;
+      final categories = jsonList.cast<Map<String, dynamic>>().toList();
+      print('Загружено категорий: ${categories.length} записей');
+      return categories;
+    } catch (e) {
+      print('Ошибка загрузки категорий: $e');
+      return [];
+    }
+  }
+
   static Future<void> clearAllData() async {
     try {
       final prefs = await SharedPreferences.getInstance();

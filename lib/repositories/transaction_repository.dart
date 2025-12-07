@@ -9,19 +9,18 @@ class TransactionRepository {
       final transactionsData = await StorageService.loadTransactions();
       
       if (transactionsData.isEmpty) {
-        // При первом запуске список пустой
         _transactions = [];
       } else {
-        // Загружаем сохраненные транзакции
         _transactions = transactionsData
             .map((data) => Transaction.fromMap(data))
-            .toList()
-            .reversed
-            .toList(); // Новые первыми
+            .toList();
+        
+        // Сортируем по дате в порядке убывания (новые первыми)
+        _transactions.sort((a, b) => b.date.compareTo(a.date));
       }
     } catch (e) {
       print('Ошибка загрузки транзакций: $e');
-      _transactions = []; // Пустой список при ошибке
+      _transactions = [];
     }
   }
   
@@ -30,7 +29,8 @@ class TransactionRepository {
   }
   
   Future<void> addTransaction(Transaction transaction) async {
-    _transactions.insert(0, transaction); // Добавляем в начало
+    // Добавляем в начало списка
+    _transactions.insert(0, transaction);
     await _saveTransactions();
   }
   
@@ -40,6 +40,39 @@ class TransactionRepository {
     
     if (_transactions.length < initialCount) {
       await _saveTransactions();
+    }
+  }
+  
+  Future<void> updateCategoryInTransactions(String oldCategory, bool isIncome, String newCategory) async {
+    bool updated = false;
+    final List<Transaction> updatedTransactions = [];
+    
+    print('Обновление категории в транзакциях: $oldCategory -> $newCategory, тип: $isIncome');
+    
+    for (final transaction in _transactions) {
+      if (transaction.category == oldCategory && transaction.isIncome == isIncome) {
+        print('Найдена транзакция для обновления: ${transaction.title}, категория: ${transaction.category}, дата: ${transaction.date}');
+        updatedTransactions.add(Transaction(
+          id: transaction.id,
+          title: transaction.title,
+          amount: transaction.amount,
+          date: transaction.date, // Сохраняем оригинальную дату
+          category: newCategory,
+          description: transaction.description,
+          isIncome: transaction.isIncome,
+        ));
+        updated = true;
+      } else {
+        updatedTransactions.add(transaction);
+      }
+    }
+    
+    if (updated) {
+      _transactions = updatedTransactions;
+      await _saveTransactions();
+      print('Обновлено транзакций: $updated');
+    } else {
+      print('Не найдено транзакций для обновления');
     }
   }
   

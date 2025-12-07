@@ -4,6 +4,7 @@ import '../models/transaction.dart';
 import '../viewmodels/home_viewmodel.dart';
 import 'add_transaction_screen.dart';
 import 'transactions_screen.dart';
+import 'categories_screen.dart';
 import '../dialogs/adjust_balance_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -18,7 +19,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     
-    // Ждем окончания построения виджета перед загрузкой данных
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final viewModel = Provider.of<HomeViewModel>(context, listen: false);
       viewModel.loadInitialData();
@@ -48,6 +48,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     : const Icon(Icons.refresh),
                 onPressed: viewModel.isRefreshingCurrency ? null : viewModel.refreshCurrencyRates,
                 tooltip: 'Обновить курсы валют',
+              ),
+              IconButton(
+                icon: const Icon(Icons.category),
+                onPressed: () => _navigateToCategories(context),
+                tooltip: 'Управление категориями',
               ),
               IconButton(
                 icon: const Icon(Icons.edit),
@@ -213,12 +218,22 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Icon(
             transaction.isIncome ? Icons.arrow_upward : Icons.arrow_downward,
             color: transaction.isIncome ? Colors.green : Colors.red,
+            size: 20,
           ),
         ),
         title: Text(transaction.title, style: const TextStyle(fontWeight: FontWeight.w500)),
-        subtitle: Text(
-          '${transaction.date.day}.${transaction.date.month}.${transaction.date.year} • ${transaction.category}',
-          style: const TextStyle(fontSize: 12),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              transaction.formattedDate,
+              style: const TextStyle(fontSize: 12),
+            ),
+            Text(
+              transaction.category,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
         ),
         trailing: Text(
           '${transaction.isIncome ? '+' : '-'}${transaction.amount.toStringAsFixed(2)} ₽',
@@ -347,6 +362,15 @@ class _HomeScreenState extends State<HomeScreen> {
           initialTransactions: viewModel.transactions,
           onDeleteTransaction: viewModel.deleteTransaction,
         ),
+      ),
+    );
+  }
+
+  void _navigateToCategories(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CategoriesScreen(),
       ),
     );
   }

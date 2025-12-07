@@ -1,15 +1,13 @@
 import 'dart:convert';
 
-/// Модель данных для финансовой транзакции
-/// Хранит информацию о доходе/расходе
 class Transaction {
-  final String id;           // Уникальный идентификатор транзакции
-  final String title;        // Название операции
-  final double amount;       // Сумма транзакции
-  final DateTime date;       // Дата и время операции
-  final String category;     // Категория (Еда, Транспорт и т.д.)
-  final String? description; // Описание (опционально)
-  final bool isIncome;       // true - доход, false - расход
+  final String id;
+  final String title;
+  final double amount;
+  final DateTime date;
+  final String category;
+  final String? description;
+  final bool isIncome;
 
   Transaction({
     required this.id,
@@ -21,8 +19,6 @@ class Transaction {
     required this.isIncome,
   });
 
-  /// Фабричный метод для создания новой транзакции
-  /// Автоматически генерирует ID и устанавливает текущую дату
   factory Transaction.create({
     required String title,
     required double amount,
@@ -41,7 +37,6 @@ class Transaction {
     );
   }
 
-  /// Конвертирует транзакцию в Map для JSON-сериализации
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -54,7 +49,6 @@ class Transaction {
     };
   }
 
-  /// Создает транзакцию из Map (при загрузке из хранилища)
   factory Transaction.fromMap(Map<String, dynamic> map) {
     return Transaction(
       id: map['id'] as String,
@@ -67,10 +61,35 @@ class Transaction {
     );
   }
 
-  /// Конвертирует транзакцию в JSON строку
   String toJson() => json.encode(toMap());
 
-  /// Создает транзакцию из JSON строки
   factory Transaction.fromJson(String source) =>
       Transaction.fromMap(json.decode(source) as Map<String, dynamic>);
+
+  String get formattedDateTime {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final second = date.second.toString().padLeft(2, '0');
+    
+    return '$day.$month.$year $hour:$minute:$second';
+  }
+
+  String get formattedDate {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    
+    return '$day.$month.$year';
+  }
+
+  String get formattedTime {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final second = date.second.toString().padLeft(2, '0');
+    
+    return '$hour:$minute:$second';
+  }
 }
